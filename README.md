@@ -1,41 +1,42 @@
-# Spreaker Customized App - Resign app script
+# Spreaker Customized App for iOS
 
-Thank you for purchasing your Customized App!
-Before uploading your brand new app, you'll need to sign in with your distribution certificate.
-The `prepare_ipa.sh` script is here, just for that!
+More information:
+http://www.spreaker.com/store/app
+
+
+## How to sign an app with your distribution certificate
+
+Before uploading your brand new app, you'll need to sign in with your distribution certificate. The `prepare_ipa.sh` script is here, just for that!
 
 If you need help or have any questions, visit http://help.spreaker.com.
 
-Spreaker's Mobile Team
-www.spreaker.com
 
 
+### Requirements
 
-## Requirements
-
-### Installed software:
+#### Software:
 * XCode
 * XCode Command line Tools
 * Application Loader
 
-### App in iTunes Connect:
+#### App in iTunes Connect:
 * You need to set up an app inside the iTunes Connect portal.
 In order to upload the .ipa with Application Loader, the app MUST be in the "Waiting for Upload" state.
 
-### Information:
+#### Certificate and Provisioning Profile:
 * An App Store Distribution Provisioning Profile (a .mobileprovision file)
 * The certificate (with its private key) in your keychain, in order to use the distribution profile above
 * The certificate identity name
 
 
 
-## Execution
+### Run prepare_ipa.sh
 
-In order to run, the script needs 3 parameters in the command line:
+The `prepare_ipa.sh` script requires 3 parameters in the command line:
 
-* The .xcarchive file we provided you
-* The developer identity name needed when using the provisioning profile
-* The .mobileprovision file itself
+ 1. The .xcarchive file we provided you
+ 2. The developer identity name needed when using the provisioning profile
+ 3. The .mobileprovision file itself
 
 In detail
 
