@@ -6,9 +6,9 @@ http://www.spreaker.com/store/app
 
 ## How to sign an app with your distribution certificate
 
-Before uploading your brand new app, you'll need to sign in with your distribution certificate. The `prepare_ipa.sh` script is here, just for that!
+Before uploading your brand new app to App Store, you'll need to sign in with your distribution certificate. The `prepare_ipa.sh` script is here, just for that!
 
-If you need help or have any questions, visit http://help.spreaker.com.
+If you need help or have any questions, please visit http://help.spreaker.com.
 
 
 
