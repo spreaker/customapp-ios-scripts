@@ -1,6 +1,6 @@
 #!/bin/sh
 # 
-# Copyright (c) 2014 Spreaker Inc. (http://www.spreaker.com/)
+# Copyright (c) 2015 Spreaker Inc. (http://www.spreaker.com/)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,36 +26,75 @@
 # Spreaker Custom App - Resign app script
 # 
 
-if [ $# -lt 3 ]; then
-        echo "Usage: $0 <.xcarchive file> <developer identity name> <.mobileprovision file>" >&2
-        echo "See README file for more information."
-        exit 1
-fi
-
-
-#
-# Preparing local variables
-#
-echo "Preparing..."
-
+# Prepare common stuff
 WORKING_DIR=`pwd`
 LOG_FILE="Log.log"
 
-# Local commands
+AWK="$(which awk)"
+SED="$(which sed)"
 PLISTBUDDY=/usr/libexec/PlistBuddy
-CODESIGN=/usr/bin/codesign
-XCRUN=/usr/bin/xcrun
+CODESIGN="$(which codesign)"
+XCODEBUILD="$(which xcodebuild)"
 
-# User parameters
-XCARCHIVE_FILE=$1
-SIGNING_IDENTITY=$2
-PROVISIONING_FILE=$3
+
+#
+# Select xcarchive file
+#
+XCARCHIVE_FILE=`ls $WORKING_DIR | grep .xcarchive`
+if [ -z "$XCARCHIVE_FILE" ]; then
+ 	echo "ERROR: Missing xcarchive file from current directory."
+	exit 1
+fi
+echo "Found archive: $XCARCHIVE_FILE"
+
+
+#
+# Select mobileprovision file
+#
+PROVISIONING_FILE=`ls $WORKING_DIR | grep .mobileprovision`
+if [ -z "$PROVISIONING_FILE" ]; then
+ 	echo "ERROR: Missing mobileprovision file from current directory."
+	exit 1
+fi
+echo "Found provisioning file: $PROVISIONING_FILE"
+
+
+#
+# Select signing identity available
+#
+FETCHED_IDENTITIES=`security find-identity -p codesigning -v`
+SIGNING_IDENTITIES=""
+while read -r line; do
+	IDENTITY=`echo $line | ${AWK} '/iPhone/ { print $0 }'`
+	if [ -n "$IDENTITY" ]; then
+    	SIGNING_IDENTITIES="$SIGNING_IDENTITIES$IDENTITY\n"
+	fi
+done <<< "$FETCHED_IDENTITIES"
+
+echo "Select propert identity for signing the app:"
+echo "$SIGNING_IDENTITIES"
+read -p "Type the number of the signing identity to use: " IDENTITY_INDEX
+
+SIGNING_IDENTITY=`echo "$SIGNING_IDENTITIES" | ${SED} -n ${IDENTITY_INDEX}p | ${SED} 's/[^"]*"\([^"]*\)".*/\1/'`
+if [ -z "$SIGNING_IDENTITY" ]; then
+	echo "ERROR: Invalid signing identity."
+	exit 1
+fi
+echo "Using signing identity: \"$SIGNING_IDENTITY\""
+
+
+#
+# Re-signing
+#
+echo "Re-signing..."
+
+# Log some information
 echo "XCARCHIVE_FILE: $XCARCHIVE_FILE" >> $LOG_FILE 
 echo "SIGNING_IDENTITY: $SIGNING_IDENTITY" >> $LOG_FILE 
 echo "PROVISIONING_FILE: $PROVISIONING_FILE" >> $LOG_FILE 
 
 # Generate ipa file name
-OUTPUT_IPA_NAME=`echo $XCARCHIVE_FILE | awk '{split($0,a,"."); printf a[1] "-AppStoreReady.ipa"}'`
+OUTPUT_IPA_NAME=`echo $XCARCHIVE_FILE | ${AWK} '{split($0,a,"."); printf a[1] "-AppStoreReady.ipa"}'`
 echo "OUTPUT_IPA_NAME: $OUTPUT_IPA_NAME" >> $LOG_FILE 
 
 # Get app name
@@ -65,9 +104,9 @@ echo "APP_NAME: $APP_NAME" >> $LOG_FILE
 echo "XCARCHIVE_INTERNAL_APP: $XCARCHIVE_INTERNAL_APP" >> $LOG_FILE 
 
 # Get bundle identifier
-FULL_APP_BUNDLE_ID=`egrep -a -A 2 application-identifier $PROVISIONING_FILE | grep string | sed -e 's/<string>//' -e 's/<\/string>//' -e 's/ //' -e 's/ //'`
-APP_ID_PREFIX=`echo $FULL_APP_BUNDLE_ID | awk '{split($0,a,"."); print a[1]}'`
-APP_BUNDLE_ID=`echo $FULL_APP_BUNDLE_ID | awk '{split($0,array,"."); delete array[1]; for(a in array) {printf array[a] "."}}' | sed -e 's/\.$//'`
+FULL_APP_BUNDLE_ID=`egrep -a -A 2 application-identifier $PROVISIONING_FILE | grep string | ${SED} -e 's/<string>//' -e 's/<\/string>//' -e 's/ //' -e 's/ //'`
+APP_ID_PREFIX=`echo $FULL_APP_BUNDLE_ID | ${AWK} '{ split($0,a,"."); print a[1] }'`
+APP_BUNDLE_ID=`echo $FULL_APP_BUNDLE_ID | ${AWK} '{ split($0,array,"."); delete array[1]; for(a in array) {printf array[a] "."} }' | ${SED} -e 's/\.$//'`
 echo "APP_ID_PREFIX: $APP_ID_PREFIX" >> $LOG_FILE 
 echo "APP_BUNDLE_ID: $APP_BUNDLE_ID" >> $LOG_FILE 
 
@@ -114,20 +153,20 @@ ${PLISTBUDDY} -c "Set:ApplicationProperties:SigningIdentity $SIGNING_IDENTITY" "
 # Change the bundle ID in the embedded Info.plist 
 ${PLISTBUDDY} -c "Set:CFBundleIdentifier $APP_BUNDLE_ID" "$XCARCHIVE_INTERNAL_APP/Info.plist"
 
-# Sign the changes
-${CODESIGN} -f -s "$SIGNING_IDENTITY" --resource-rules="$XCARCHIVE_INTERNAL_APP/ResourceRules.plist" --entitlements Entitlements.plist "$XCARCHIVE_INTERNAL_APP" >> $LOG_FILE
+# Sign the changes 
+${CODESIGN} --force --sign "$SIGNING_IDENTITY" --entitlements Entitlements.plist "$XCARCHIVE_INTERNAL_APP" >> $LOG_FILE 
 if [ $? -ne 0 ]; then
-	echo "ERROR: See '$LOG_FILE' for more details"
-	exit 1
+    echo "ERROR: See '$LOG_FILE' for more details"     
+    exit 1 
 fi
 
 
 #
-# Build .ipa
+# Export .ipa
 #
-echo "Building .ipa file..."
+echo "Exporting .ipa file..."
 
-${XCRUN} -sdk iphoneos PackageApplication -v "$XCARCHIVE_INTERNAL_APP" -o "$WORKING_DIR/$OUTPUT_IPA_NAME" --sign "$SIGNING_IDENTITY" --embed "$PROVISIONING_PROFILE" >> $LOG_FILE
+${XCODEBUILD} -exportArchive -exportFormat ipa -archivePath "$XCARCHIVE_FILE" -exportPath "$WORKING_DIR/$OUTPUT_IPA_NAME" >> $LOG_FILE
 if [ $? -ne 0 ]; then
 	echo "ERROR: See '$LOG_FILE' for more details"
 	exit 1
@@ -149,5 +188,23 @@ echo
 echo "Your .ipa file is available here:"
 echo "$WORKING_DIR/$OUTPUT_IPA_NAME"
 echo
+
+
+#
+# Opens Application loader, if possible
+#
+
+APPLICATION_LOADER=""
+if [ -d "/Applications/Application Loader.app" ]; then
+	APPLICATION_LOADER="/Applications/Application Loader.app"
+elif [ -d "/Applications/Xcode.app" ]; then
+	APPLICATION_LOADER="/Applications/Xcode.app/Contents/Applications/Application Loader.app"
+fi
+
+if [ -n "$APPLICATION_LOADER" ]; then
+	echo "Launching Application Loader. To upload the ipa, click on \"Deliver Your App\" and select the generated .ipa file. Then follow the on-screen steps."
+	
+	open -a "$APPLICATION_LOADER" "$WORKING_DIR/$OUTPUT_IPA_NAME"
+fi
 
 exit 0
