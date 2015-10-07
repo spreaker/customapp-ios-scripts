@@ -86,7 +86,7 @@ echo "Using signing identity: \"$SIGNING_IDENTITY\""
 #
 # Re-signing
 #
-echo "Re-signing..."
+echo "Preparing..."
 
 # Log some information
 echo "XCARCHIVE_FILE: $XCARCHIVE_FILE" >> $LOG_FILE 
@@ -96,6 +96,8 @@ echo "PROVISIONING_FILE: $PROVISIONING_FILE" >> $LOG_FILE
 # Generate ipa file name
 OUTPUT_IPA_NAME=`echo $XCARCHIVE_FILE | ${AWK} '{split($0,a,"."); printf a[1] "-AppStoreReady.ipa"}'`
 echo "OUTPUT_IPA_NAME: $OUTPUT_IPA_NAME" >> $LOG_FILE 
+OUTPUT_IPA_PATH=`echo $WORKING_DIR/ReadyForAppstore`
+echo "OUTPUT_IPA_PATH: $OUTPUT_IPA_PATH" >> $LOG_FILE 
 
 # Get app name
 APP_NAME=`ls $XCARCHIVE_FILE/Products/Applications/ | cut -d . -f 1`
@@ -112,14 +114,25 @@ echo "APP_BUNDLE_ID: $APP_BUNDLE_ID" >> $LOG_FILE
 
 
 #
-# Copy .mobileprovision inside the app
+# Install provisioning profile
 #
+echo "Preparing provisioning profile..."
+
+# First, inside the machine itself
+PROVISIONING_CONTENT=$(security cms -D -i $PROVISIONING_FILE)
+UUID=$(${PLISTBUDDY} -c "Print :UUID" /dev/stdin <<< $PROVISIONING_CONTENT)
+cp "$PROVISIONING_FILE" "$HOME/Library/MobileDevice/Provisioning Profiles/${UUID}.mobileprovision"
+
+# Then inside the app
 cp "$PROVISIONING_FILE" "$XCARCHIVE_INTERNAL_APP/embedded.mobileprovision"
 
 
 #
-# Create a Entitlements.plist file and put it inside the app
+# Preparing xcarchive
 #
+echo "Updating xcarchive..."
+
+# Create a Entitlements.plist file and put it inside the app
 cat << EOF > Entitlements.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -129,8 +142,10 @@ cat << EOF > Entitlements.plist
 	<string>$APP_ID_PREFIX.$APP_BUNDLE_ID</string>
 	<key>keychain-access-groups</key>
 	<array>
-	<string>$APP_ID_PREFIX.$APP_BUNDLE_ID</string>
+		<string>$APP_ID_PREFIX.$APP_BUNDLE_ID</string>
 	</array>
+	<key>com.apple.developer.team-identifier</key>
+	<string>$APP_ID_PREFIX</string>
    	<key>get-task-allow</key>
     <false/>
 </dict>
@@ -139,22 +154,29 @@ EOF
 
 cp "Entitlements.plist" "$XCARCHIVE_INTERNAL_APP/Entitlements.plist"
 
+# NOTE: File added with iOS9
+if [ -f "$XCARCHIVE_INTERNAL_APP/archived-expanded-entitlements.xcent" ]; then
+	${PLISTBUDDY} -c "Set :application-identifier $APP_ID_PREFIX.$APP_BUNDLE_ID" "$XCARCHIVE_INTERNAL_APP/archived-expanded-entitlements.xcent"
+	${PLISTBUDDY} -c "Set :keychain-access-groups:0 $APP_ID_PREFIX.$APP_BUNDLE_ID" "$XCARCHIVE_INTERNAL_APP/archived-expanded-entitlements.xcent"
+fi
 
 #
 # Edit Info.plist
 #
 echo "Updating Info.plist file..."
-echo "NOTE: May ask for your keychain password"
+echo "ATTENTION: May ask for your keychain access. Please allow it"
 
 # Change the top level Plist
-${PLISTBUDDY} -c "Set:ApplicationProperties:CFBundleIdentifier $APP_BUNDLE_ID" "$XCARCHIVE_FILE/Info.plist"
-${PLISTBUDDY} -c "Set:ApplicationProperties:SigningIdentity $SIGNING_IDENTITY" "$XCARCHIVE_FILE/Info.plist"
+${PLISTBUDDY} -c "Set :ApplicationProperties:CFBundleIdentifier $APP_BUNDLE_ID" "$XCARCHIVE_FILE/Info.plist"
+${PLISTBUDDY} -c "Set :ApplicationProperties:SigningIdentity $SIGNING_IDENTITY" "$XCARCHIVE_FILE/Info.plist"
 
 # Change the bundle ID in the embedded Info.plist 
-${PLISTBUDDY} -c "Set:CFBundleIdentifier $APP_BUNDLE_ID" "$XCARCHIVE_INTERNAL_APP/Info.plist"
+${PLISTBUDDY} -c "Set :CFBundleIdentifier $APP_BUNDLE_ID" "$XCARCHIVE_INTERNAL_APP/Info.plist"
+
+echo "Re-signing..."
 
 # Sign the changes 
-${CODESIGN} --force --sign "$SIGNING_IDENTITY" --entitlements Entitlements.plist "$XCARCHIVE_INTERNAL_APP" >> $LOG_FILE 
+${CODESIGN} --force --sign "$SIGNING_IDENTITY" --entitlements "Entitlements.plist" "$XCARCHIVE_INTERNAL_APP" >> $LOG_FILE 
 if [ $? -ne 0 ]; then
     echo "ERROR: See '$LOG_FILE' for more details"     
     exit 1 
@@ -166,7 +188,24 @@ fi
 #
 echo "Exporting .ipa file..."
 
-${XCODEBUILD} -exportArchive -exportFormat ipa -archivePath "$XCARCHIVE_FILE" -exportPath "$WORKING_DIR/$OUTPUT_IPA_NAME" >> $LOG_FILE
+# Creates an export options plist file
+cat << EOF > exportOptions.plist
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>teamID</key>
+        <string>$APP_ID_PREFIX</string>
+        <key>method</key>
+        <string>app-store</string>
+        <key>uploadSymbols</key>
+        <true/>
+</dict>
+</plist>
+EOF
+
+# Run new exportArchive command
+${XCODEBUILD} -exportArchive -exportOptionsPlist exportOptions.plist -archivePath "$XCARCHIVE_FILE" -exportPath "$OUTPUT_IPA_PATH" >> $LOG_FILE
 if [ $? -ne 0 ]; then
 	echo "ERROR: See '$LOG_FILE' for more details"
 	exit 1
@@ -177,6 +216,7 @@ fi
 # Cleanup
 #
 rm "Entitlements.plist"
+rm "exportOptions.plist"
 rm "$LOG_FILE"
 
 
@@ -185,8 +225,8 @@ rm "$LOG_FILE"
 #
 echo "Done!"
 echo 
-echo "Your .ipa file is available here:"
-echo "$WORKING_DIR/$OUTPUT_IPA_NAME"
+echo "Your .ipa file is available inside here:"
+echo "$OUTPUT_IPA_PATH"
 echo
 
 
@@ -204,7 +244,7 @@ fi
 if [ -n "$APPLICATION_LOADER" ]; then
 	echo "Launching Application Loader. To upload the ipa, click on \"Deliver Your App\" and select the generated .ipa file. Then follow the on-screen steps."
 	
-	open -a "$APPLICATION_LOADER" "$WORKING_DIR/$OUTPUT_IPA_NAME"
+	open -a "$APPLICATION_LOADER" "$OUTPUT_IPA_PATH/CustomApp_Prod.ipa"
 fi
 
 exit 0

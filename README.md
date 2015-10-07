@@ -35,17 +35,17 @@ In order to upload the .ipa with Application Loader, the app MUST be in the "Pre
 
 ### Run prepare_ipa.sh
 
-In order to execute script, put all the files involved (.xcarchive, prepare_ipa.sh and .mobileprovision files) in the same folder.
+In order to execute script, put all the files involved (`.xcarchive`, `prepare_ipa.sh` and `.mobileprovision` files) in the same folder.
 
 The `prepare_ipa.sh` script requires 3 things:
 
- 1. The .xcarchive file we provided you.
+ 1. The `.xcarchive` file we provided you.
  2. The developer identity name needed when using the provisioning profile.
- 3. The .mobileprovision file itself.
+ 3. The `.mobileprovision` file itself.
 
 Once you launch the script, it will looks for those two files in the current directory and will prompt you to choose which developer identity use for signing.
 
-* To get the `.mobileprovision`, simply visit the iTunes Connect Portal (https://developer.apple.com/account/ios/profile/profileList.action) and download the App Store Distribution Provisioning Profile related to this app.
+* To get the `.mobileprovision`, simply visit the [iTunes Connect Portal](https://developer.apple.com/account/ios/profile/profileList.action) and download the *App Store Distribution Provisioning Profile* related to this app.
 If needed, create it from scratch. There are no restrictions regarding the app bundle ID to use. Feel free to create whatever you wish.
 Remember to move/copy the `.mobileprovision` file into the script folder.
 
