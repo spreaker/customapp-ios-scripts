@@ -15,8 +15,8 @@ If you need help or have any questions, please visit http://help.spreaker.com.
 ### Requirements
 
 #### Software:
-* XCode
-* XCode Command line Tools
+* XCode (latest version)
+* XCode Command line Tools (latest version)
 * Application Loader (it's inside Xcode)
 * Terminal
 
