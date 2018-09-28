@@ -1,5 +1,5 @@
 #!/bin/bash
-# 
+#
 # Copyright (c) 2015 Spreaker Inc. (http://www.spreaker.com/)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -52,7 +52,7 @@ fi
 
 #
 # Spreaker Custom App - Resign app script
-# 
+#
 
 
 # Prepare common stuff
@@ -77,6 +77,16 @@ if [ -z "$XCARCHIVE_FILE" ]; then
 fi
 echo "✅ Found archive: $XCARCHIVE_FILE"
 
+
+#
+# Select certificates file
+#
+CERTIFICATE_FILE=`ls $WORKING_DIR | grep ios_distribution.cer`
+if [ -z "$CERTIFICATE_FILE" ]; then
+    echo "⚠️ WARNING: Missing ios_distribution.cer file from $WORKING_DIR"
+else
+    echo "✅ Found certificate file: $CERTIFICATE_FILE"
+fi
 
 #
 # Select mobileprovision file
@@ -123,29 +133,39 @@ echo
 echo "🚧 Preparing..."
 
 # Log some information
-echo "XCARCHIVE_FILE: $XCARCHIVE_FILE" >> $LOG_FILE 
-echo "SIGNING_IDENTITY: $SIGNING_IDENTITY" >> $LOG_FILE 
-echo "PROVISIONING_FILE: $PROVISIONING_FILE" >> $LOG_FILE 
+echo "XCARCHIVE_FILE: $XCARCHIVE_FILE" >> $LOG_FILE
+echo "SIGNING_IDENTITY: $SIGNING_IDENTITY" >> $LOG_FILE
+echo "CERTIFICATE_FILE: $CERTIFICATE_FILE" >> $LOG_FILE
+echo "PROVISIONING_FILE: $PROVISIONING_FILE" >> $LOG_FILE
 
 # Generate ipa file name
 OUTPUT_IPA_NAME=`echo $XCARCHIVE_FILE | ${AWK} '{split($0,a,"."); printf a[1] "-AppStoreReady.ipa"}'`
-echo "OUTPUT_IPA_NAME: $OUTPUT_IPA_NAME" >> $LOG_FILE 
+echo "OUTPUT_IPA_NAME: $OUTPUT_IPA_NAME" >> $LOG_FILE
 OUTPUT_IPA_PATH=`echo $WORKING_DIR/ReadyForAppstore`
-echo "OUTPUT_IPA_PATH: $OUTPUT_IPA_PATH" >> $LOG_FILE 
+echo "OUTPUT_IPA_PATH: $OUTPUT_IPA_PATH" >> $LOG_FILE
 
 # Get app name
 APP_NAME=`ls $XCARCHIVE_FILE/Products/Applications/ | cut -d . -f 1`
 XCARCHIVE_INTERNAL_APP="$XCARCHIVE_FILE/Products/Applications/$APP_NAME.app"
-echo "APP_NAME: $APP_NAME" >> $LOG_FILE 
-echo "XCARCHIVE_INTERNAL_APP: $XCARCHIVE_INTERNAL_APP" >> $LOG_FILE 
+echo "APP_NAME: $APP_NAME" >> $LOG_FILE
+echo "XCARCHIVE_INTERNAL_APP: $XCARCHIVE_INTERNAL_APP" >> $LOG_FILE
 
 # Get bundle identifier
 FULL_APP_BUNDLE_ID=`egrep -a -A 2 application-identifier $PROVISIONING_FILE | grep string | ${SED} -e 's/<string>//' -e 's/<\/string>//' -e 's/ //' -e 's/ //'`
 APP_ID_PREFIX=`echo $FULL_APP_BUNDLE_ID | ${AWK} '{ split($0,a,"."); print a[1] }'`
 APP_BUNDLE_ID=`echo $FULL_APP_BUNDLE_ID | ${AWK} '{ split($0,array,"."); delete array[1]; for(a in array) {printf array[a] "."} }' | ${SED} -e 's/\.$//'`
-echo "APP_ID_PREFIX: $APP_ID_PREFIX" >> $LOG_FILE 
-echo "APP_BUNDLE_ID: $APP_BUNDLE_ID" >> $LOG_FILE 
+echo "APP_ID_PREFIX: $APP_ID_PREFIX" >> $LOG_FILE
+echo "APP_BUNDLE_ID: $APP_BUNDLE_ID" >> $LOG_FILE
 
+
+#
+# Install certificate file
+#
+if [ ! -z "$CERTIFICATE_FILE" ]; then
+    echo "Preparing certificate..."
+
+    security import $CERTIFICATE_FILE -k ~/Library/Keychains/login.keychain -T $CODESIGN
+fi
 
 #
 # Install provisioning profile
@@ -204,19 +224,19 @@ echo "Updating Info.plist file..."
 ${PLISTBUDDY} -c "Set :ApplicationProperties:CFBundleIdentifier $APP_BUNDLE_ID" "$XCARCHIVE_FILE/Info.plist"
 ${PLISTBUDDY} -c "Set :ApplicationProperties:SigningIdentity $SIGNING_IDENTITY" "$XCARCHIVE_FILE/Info.plist"
 
-# Change the bundle ID in the embedded Info.plist 
+# Change the bundle ID in the embedded Info.plist
 ${PLISTBUDDY} -c "Set :CFBundleIdentifier $APP_BUNDLE_ID" "$XCARCHIVE_INTERNAL_APP/Info.plist"
 
 
-# Sign the changes 
+# Sign the changes
 echo
 echo "🔑 Re-signing..."
 echo "🚨 ATTENTION: May ask for your keychain access. Please do so clicking on Always Allow"
 
-${CODESIGN} --force --sign "$SIGNING_IDENTITY" --entitlements "Entitlements.plist" "$XCARCHIVE_INTERNAL_APP" >> $LOG_FILE 
+${CODESIGN} --force --sign "$SIGNING_IDENTITY" --entitlements "Entitlements.plist" "$XCARCHIVE_INTERNAL_APP" >> $LOG_FILE
 if [ $? -ne 0 ]; then
-    echo "⛔ ERROR: See '$LOG_FILE' for more details"     
-    exit 1 
+    echo "⛔ ERROR: See '$LOG_FILE' for more details"
+    exit 1
 fi
 
 
@@ -267,7 +287,7 @@ rm "$LOG_FILE"
 # Done!
 #
 echo "✅ ipa file ready to upload!"
-echo 
+echo
 echo "Your .ipa file is available inside here:"
 echo "$OUTPUT_IPA_PATH"
 echo
@@ -287,7 +307,7 @@ fi
 if [ -n "$APPLICATION_LOADER" ]; then
 	echo "📲 Launching Application Loader..."
 	echo "To upload the ipa, sign in, click on \"Deliver Your App\" and select the generated .ipa file. Then follow the on-screen steps."
-	
+
 	open -a "$APPLICATION_LOADER" "$OUTPUT_IPA_PATH/CustomApp Prod.ipa"
 fi
 

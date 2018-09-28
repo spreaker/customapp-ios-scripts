@@ -2,3 +2,5 @@
 *.mobileprovision
 *.cer
 ReadyForAppstore
+Entitlements.plist
+Log.log
