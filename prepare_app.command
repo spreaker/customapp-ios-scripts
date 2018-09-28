@@ -118,13 +118,12 @@ echo "Select proper identity for signing the app:"
 echo -e "$SIGNING_IDENTITIES"
 read -p "Type the number of the signing identity to use: " IDENTITY_INDEX
 
-SIGNING_IDENTITY=`echo -e "$SIGNING_IDENTITIES" | ${SED} -n ${IDENTITY_INDEX}p | ${SED} 's/[^"]*"\([^"]*\)".*/\1/'`
+SIGNING_IDENTITY=`echo -e "$SIGNING_IDENTITIES" | ${SED} -n ${IDENTITY_INDEX}p | ${SED} 's/\(.*\) \([A-F0-9]*\) \(.*\)/\2/'`
 if [ -z "$SIGNING_IDENTITY" ]; then
 	echo "⛔ ERROR: Invalid signing identity."
 	exit 1
 fi
 echo "🔑 Using signing identity: \"$SIGNING_IDENTITY\""
-
 
 #
 # Re-signing
