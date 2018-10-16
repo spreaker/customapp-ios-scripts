@@ -22,7 +22,7 @@
 #
 
 WORKING_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd $WORKING_DIR
+cd "$WORKING_DIR"
 
 #
 # Check requirements
@@ -70,7 +70,7 @@ echo "Checking required files..."
 #
 # Select xcarchive file
 #
-XCARCHIVE_FILE=`ls $WORKING_DIR | grep .xcarchive`
+XCARCHIVE_FILE=`ls "$WORKING_DIR" | grep .xcarchive`
 if [ -z "$XCARCHIVE_FILE" ]; then
  	echo "⛔ ERROR: Missing xcarchive file from $WORKING_DIR"
 	exit 1
@@ -81,7 +81,7 @@ echo "✅ Found archive: $XCARCHIVE_FILE"
 #
 # Select certificates file
 #
-CERTIFICATE_FILE=`ls $WORKING_DIR | grep ios_distribution.cer`
+CERTIFICATE_FILE=`ls "$WORKING_DIR" | grep ios_distribution.cer`
 if [ -z "$CERTIFICATE_FILE" ]; then
     echo "⚠️ WARNING: Missing ios_distribution.cer file from $WORKING_DIR"
 else
@@ -91,7 +91,7 @@ fi
 #
 # Select mobileprovision file
 #
-PROVISIONING_FILE=`ls $WORKING_DIR | grep .mobileprovision`
+PROVISIONING_FILE=`ls "$WORKING_DIR" | grep .mobileprovision`
 if [ -z "$PROVISIONING_FILE" ]; then
  	echo "⛔ ERROR: Missing mobileprovision file from $WORKING_DIR"
 	exit 1
