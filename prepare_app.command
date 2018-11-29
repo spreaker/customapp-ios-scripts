@@ -71,9 +71,13 @@ echo "Checking required files..."
 # Select xcarchive file
 #
 XCARCHIVE_FILE=`ls "$WORKING_DIR" | grep .xcarchive`
+XCARCHIVE_FILE_COUNT=`echo "$XCARCHIVE_FILE" | wc -l`
 if [ -z "$XCARCHIVE_FILE" ]; then
- 	echo "⛔ ERROR: Missing xcarchive file from $WORKING_DIR"
-	exit 1
+  echo "⛔ ERROR: Missing xcarchive file from \"$WORKING_DIR\""
+  exit 1
+elif [ $XCARCHIVE_FILE_COUNT -gt "1" ]; then
+  echo "⛔ ERROR: Too many xcarchive files available in \"$WORKING_DIR\". Please keep only the most recent one."
+  exit 1
 fi
 echo "✅ Found archive: $XCARCHIVE_FILE"
 
@@ -150,7 +154,7 @@ echo "APP_NAME: $APP_NAME" >> $LOG_FILE
 echo "XCARCHIVE_INTERNAL_APP: $XCARCHIVE_INTERNAL_APP" >> $LOG_FILE
 
 # Get bundle identifier
-FULL_APP_BUNDLE_ID=`egrep -a -A 2 application-identifier $PROVISIONING_FILE | grep string | ${SED} -e 's/<string>//' -e 's/<\/string>//' -e 's/ //' -e 's/ //'`
+FULL_APP_BUNDLE_ID=`egrep -a -A 2 application-identifier "$PROVISIONING_FILE" | grep string | ${SED} -e 's/<string>//' -e 's/<\/string>//' -e 's/ //' -e 's/ //'`
 APP_ID_PREFIX=`echo $FULL_APP_BUNDLE_ID | ${AWK} '{ split($0,a,"."); print a[1] }'`
 APP_BUNDLE_ID=`echo $FULL_APP_BUNDLE_ID | ${AWK} '{ split($0,array,"."); delete array[1]; for(a in array) {printf array[a] "."} }' | ${SED} -e 's/\.$//'`
 echo "APP_ID_PREFIX: $APP_ID_PREFIX" >> $LOG_FILE
@@ -163,7 +167,7 @@ echo "APP_BUNDLE_ID: $APP_BUNDLE_ID" >> $LOG_FILE
 if [ ! -z "$CERTIFICATE_FILE" ]; then
     echo "Preparing certificate..."
 
-    security import $CERTIFICATE_FILE -k ~/Library/Keychains/login.keychain -T $CODESIGN
+    security import "$CERTIFICATE_FILE" -k ~/Library/Keychains/login.keychain -T $CODESIGN
 fi
 
 #
@@ -172,7 +176,7 @@ fi
 echo "Preparing provisioning profile..."
 
 # First, inside the machine itself
-PROVISIONING_CONTENT=$(security cms -D -i $PROVISIONING_FILE)
+PROVISIONING_CONTENT=$(security cms -D -i "$PROVISIONING_FILE")
 UUID=$(${PLISTBUDDY} -c "Print :UUID" /dev/stdin <<< $PROVISIONING_CONTENT)
 PROVISIONING_NAME=$(${PLISTBUDDY} -c "Print :Name" /dev/stdin <<< $PROVISIONING_CONTENT)
 cp "$PROVISIONING_FILE" "$HOME/Library/MobileDevice/Provisioning Profiles/${UUID}.mobileprovision"
