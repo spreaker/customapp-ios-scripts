@@ -311,7 +311,10 @@ if [ -n "$APPLICATION_LOADER" ]; then
 	echo "📲 Launching Application Loader..."
 	echo "To upload the ipa, sign in, click on \"Deliver Your App\" and select the generated .ipa file. Then follow the on-screen steps."
 
-	open -a "$APPLICATION_LOADER" "$OUTPUT_IPA_PATH/CustomApp-Prod.ipa"
+  IPA_FILE=`ls "$OUTPUT_IPA_PATH" | grep .ipa`
+  if [ ! -z "$IPA_FILE" ]; then
+	  open -a "$APPLICATION_LOADER" "$OUTPUT_IPA_PATH/$IPA_FILE"
+  fi
 fi
 
 exit 0
