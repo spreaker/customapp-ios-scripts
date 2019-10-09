@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2015 Spreaker Inc. (http://www.spreaker.com/)
+# Copyright (c) 2019 Spreaker Inc. (http://www.spreaker.com/)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -141,12 +141,6 @@ echo "SIGNING_IDENTITY: $SIGNING_IDENTITY" >> $LOG_FILE
 echo "CERTIFICATE_FILE: $CERTIFICATE_FILE" >> $LOG_FILE
 echo "PROVISIONING_FILE: $PROVISIONING_FILE" >> $LOG_FILE
 
-# Generate ipa file name
-OUTPUT_IPA_NAME=`echo $XCARCHIVE_FILE | ${AWK} '{split($0,a,"."); printf a[1] "-AppStoreReady.ipa"}'`
-echo "OUTPUT_IPA_NAME: $OUTPUT_IPA_NAME" >> $LOG_FILE
-OUTPUT_IPA_PATH=`echo $WORKING_DIR/ReadyForAppstore`
-echo "OUTPUT_IPA_PATH: $OUTPUT_IPA_PATH" >> $LOG_FILE
-
 # Get app name
 APP_NAME=`ls $XCARCHIVE_FILE/Products/Applications/ | cut -d . -f 1`
 XCARCHIVE_INTERNAL_APP="$XCARCHIVE_FILE/Products/Applications/$APP_NAME.app"
@@ -204,8 +198,8 @@ cat << EOF > Entitlements.plist
 	</array>
 	<key>com.apple.developer.team-identifier</key>
 	<string>$APP_ID_PREFIX</string>
-   	<key>get-task-allow</key>
-    <false/>
+  <key>get-task-allow</key>
+  <false/>
 </dict>
 </plist>
 EOF
@@ -244,77 +238,26 @@ fi
 
 
 #
-# Export .ipa
-#
-echo
-echo "🚚 Exporting .ipa file (this can take a while ☕)..."
-
-# Creates an export options plist file
-cat << EOF > exportOptions.plist
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-        <key>teamID</key>
-        <string>$APP_ID_PREFIX</string>
-        <key>method</key>
-        <string>app-store</string>
-        <key>uploadSymbols</key>
-        <true/>
-        <key>provisioningProfiles</key>
-        <dict>
-        	<key>$APP_BUNDLE_ID</key>
-        	<string>$PROVISIONING_NAME</string>
-        </dict>
-</dict>
-</plist>
-EOF
-
-# Run new exportArchive command
-${XCODEBUILD} -exportArchive -exportOptionsPlist exportOptions.plist -archivePath "$XCARCHIVE_FILE" -exportPath "$OUTPUT_IPA_PATH" >> $LOG_FILE
-if [ $? -ne 0 ]; then
-	echo "⛔ ERROR: See '$LOG_FILE' for more details"
-	exit 1
-fi
-
-
-#
 # Cleanup
 #
 rm "Entitlements.plist"
-rm "exportOptions.plist"
 rm "$LOG_FILE"
 
 
 #
 # Done!
 #
-echo "✅ ipa file ready to upload!"
-echo
-echo "Your .ipa file is available inside here:"
-echo "$OUTPUT_IPA_PATH"
+echo "✅ app ready to upload!"
 echo
 
 
 #
-# Opens Application loader, if possible
+# Opens xcarchive file inside Xcode
 #
 
-APPLICATION_LOADER=""
-if [ -d "/Applications/Application Loader.app" ]; then
-	APPLICATION_LOADER="/Applications/Application Loader.app"
-elif [ -d "/Applications/Xcode.app" ]; then
-	APPLICATION_LOADER="/Applications/Xcode.app/Contents/Applications/Application Loader.app"
-fi
+echo "📲 Launching Xcode..."
+echo "To upload the app, click on \"Distribute App\", then follow the on-screen steps."
 
-if [ -n "$APPLICATION_LOADER" ]; then
-	echo "📲 Launching Application Loader..."
-	echo "To upload the ipa, sign in, click on \"Deliver Your App\" and select the generated .ipa file. Then follow the on-screen steps."
-
-  IPA_FILE=`ls "$OUTPUT_IPA_PATH" | grep .ipa`
-  if [ ! -z "$IPA_FILE" ]; then
-	  open -a "$APPLICATION_LOADER" "$OUTPUT_IPA_PATH/$IPA_FILE"
-  fi
-fi
+open "$XCARCHIVE_FILE"
 
 exit 0
