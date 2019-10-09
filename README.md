@@ -15,9 +15,8 @@ If you need help or have any questions, please visit http://help.spreaker.com.
 ### Requirements
 
 #### Software:
-* XCode (latest version)
+* XCode 11 (latest version)
 * XCode Command line Tools (latest version)
-* Application Loader (it's inside Xcode)
 * Terminal
 
 
@@ -52,19 +51,19 @@ To get the `.mobileprovision`, simply visit the [iTunes Connect Portal](https://
 If needed, create it from scratch. There are no restrictions regarding the app bundle ID to use. Feel free to create whatever you wish.
 Remember to move/copy the `.mobileprovision` file into the script folder.
 
-#### Launch the script 
+#### Launch the script
 
 Double click on `prepare_app.command` to execute it.
 
-The script will ask you to allow `codesign` software to access your keychain (in order to use the distribution certificate). 
+The script will ask you to allow `codesign` software to access your keychain (in order to use the distribution certificate).
 
-In a few seconds, the script completes its work and you'll find a new `.ipa` file in the folder.
+In a few seconds, the script completes its work and will open Xcode with the app ready to be uploaded.
 
 ![Execution example](example.png)
 
-* The script will also opens the `Application Loader` for you, so you can upload the `.ipa` file generated strait away.
+From Xcode then, you just follow the on screen instructions to upload the app.
 
 
 ## License
 
-Copyright (c) 2015 Spreaker, Inc. See the LICENSE file for license rights and limitations (MIT).
+Copyright (c) 2019 Spreaker, Inc. See the LICENSE file for license rights and limitations (MIT).
