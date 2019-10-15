@@ -85,7 +85,7 @@ echo "✅ Found archive: $XCARCHIVE_FILE"
 #
 # Select certificates file
 #
-CERTIFICATE_FILE=`ls "$WORKING_DIR" | grep ios_distribution.cer`
+CERTIFICATE_FILE=`ls "$WORKING_DIR" | grep distribution.cer`
 if [ -z "$CERTIFICATE_FILE" ]; then
     echo "⚠️ WARNING: Missing ios_distribution.cer file from $WORKING_DIR"
 else
@@ -112,7 +112,7 @@ echo "Reading available signing identities..."
 FETCHED_IDENTITIES=`security find-identity -p codesigning -v`
 SIGNING_IDENTITIES=""
 while read -r line; do
-	IDENTITY=`echo $line | ${AWK} '/iPhone/ { print $0 }'`
+	IDENTITY=`echo $line | ${AWK} '/iPhone Distribution|Apple Distribution/ { print $0 }'`
 	if [ -n "$IDENTITY" ]; then
     	SIGNING_IDENTITIES="$SIGNING_IDENTITIES$IDENTITY\n"
 	fi
@@ -122,7 +122,7 @@ echo "Select proper identity for signing the app:"
 echo -e "$SIGNING_IDENTITIES"
 read -p "Type the number of the signing identity to use: " IDENTITY_INDEX
 
-SIGNING_IDENTITY=`echo -e "$SIGNING_IDENTITIES" | ${SED} -n ${IDENTITY_INDEX}p | ${SED} 's/\(.*\) \([A-F0-9]*\) \(.*\)/\2/'`
+SIGNING_IDENTITY=`echo -e "$SIGNING_IDENTITIES" | grep "^${IDENTITY_INDEX})" | ${SED} 's/\(.*\) \([A-F0-9]*\) \(.*\)/\2/'`
 if [ -z "$SIGNING_IDENTITY" ]; then
 	echo "⛔ ERROR: Invalid signing identity."
 	exit 1
